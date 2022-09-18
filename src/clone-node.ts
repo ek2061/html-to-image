@@ -74,6 +74,8 @@ function cloneCSSStyle<T extends HTMLElement>(nativeNode: T, clonedNode: T) {
   }
 
   const sourceStyle = window.getComputedStyle(nativeNode);
+  const parent = nativeNode.parentElement;
+
   if (sourceStyle.cssText) {
     targetStyle.cssText = sourceStyle.cssText;
     targetStyle.transformOrigin = sourceStyle.transformOrigin;
@@ -85,6 +87,50 @@ function cloneCSSStyle<T extends HTMLElement>(nativeNode: T, clonedNode: T) {
           Math.floor(parseFloat(value.substring(0, value.length - 2))) - 0.1;
         value = `${reducedFont}px`;
       }
+
+      // non-body scrolling
+      if (
+        nativeNode.scrollTop > 0 &&
+        (sourceStyle.overflowY === "auto" ||
+          sourceStyle.overflowY === "scroll") &&
+        name === "overflow-y"
+      ) {
+        value = "hidden";
+      }
+
+      if (parent !== null) {
+        const parentStyle = window.getComputedStyle(parent);
+        if (
+          parent.scrollTop > 0 &&
+          (parentStyle.overflowY === "auto" ||
+            parentStyle.overflowY === "scroll")
+        ) {
+          if (name === "position") {
+            value = "relative";
+          } else if (name === "top") {
+            value = "-" + parent.scrollTop.toString() + "px";
+            // inset-block must be removed
+            targetStyle.removeProperty("inset-block");
+          }
+        }
+
+        // body scrolling
+        if (
+          sourceStyle.position !== "fixed" &&
+          parentStyle.minHeight === `${window.innerHeight}px` &&
+          parseInt(parentStyle.minHeight.replace("px", "")) <
+            parseInt(sourceStyle.height.replace("px", ""))
+        ) {
+          if (name === "position") {
+            value = "relative";
+          } else if (name === "top") {
+            value = "-" + window.scrollY.toString() + "px";
+            // inset-block must be removed
+            targetStyle.removeProperty("inset-block");
+          }
+        }
+      }
+
       targetStyle.setProperty(
         name,
         value,
